@@ -189,18 +189,24 @@ static uint64_t get_nanotime()
   uint64_t ret = uint64_t(ts.tv_sec) * 1000000000ULL + uint32_t(ts.tv_nsec & 0xffffffff);
   return ret;
 }
+// https://quantum2.xyz/2017/10/19/arm-ways-to-return/
+// https://docs.huihoo.com/doxygen/linux/kernel/3.7/arch_2cris_2include_2arch-v10_2arch_2user_8h_source.html
+// https://wiki.skullsecurity.org/index.php?title=Registers
 
-#if ENABLED(RDOC_X64)
-#define INST_PTR_REG rip
+// Even thought RDOC_X64 takes into account Arm (globalconfig.h) it uses here X86_64 registers 
+#if ENABLED(RDOC_X64) && defined(__aarch64__)
+#define INST_PTR_REG pc  // use program counter instead?
+#elif ENABLED(RDOC_X64)
+#define INST_PTR_REG rip  // x86_64
 #else
-#define INST_PTR_REG eip
+#define INST_PTR_REG eip  // x86
 #endif
 
 static uint64_t get_child_ip(pid_t childPid)
 {
   user_regs_struct regs = {};
 
-  long ptraceRet = ptrace(PTRACE_GETREGS, childPid, NULL, &regs);
+  long ptraceRet = ptrace(PTRACE_GETREGSET, childPid, NULL, &regs);
   if(ptraceRet == 0)
     return uint64_t(regs.INST_PTR_REG);
 
@@ -464,7 +470,7 @@ bool StopChildAtMain(pid_t childPid)
 
   user_regs_struct regs = {};
 
-  ptraceRet = ptrace(PTRACE_GETREGS, childPid, NULL, &regs);
+  ptraceRet = ptrace(PTRACE_GETREGSET, childPid, NULL, &regs);
   RDCASSERTEQUAL(ptraceRet, 0);
 
   if(Linux_Debug_PtraceLogging())
@@ -473,7 +479,7 @@ bool StopChildAtMain(pid_t childPid)
 
   // step back past the byte we inserted the breakpoint on
   regs.INST_PTR_REG--;
-  ptraceRet = ptrace(PTRACE_SETREGS, childPid, NULL, &regs);
+  ptraceRet = ptrace(PTRACE_SETREGSET, childPid, NULL, &regs);
   RDCASSERTEQUAL(ptraceRet, 0);
 
   // restore the function

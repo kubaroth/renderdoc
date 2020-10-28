@@ -395,6 +395,8 @@ public:
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
+
+#if defined(__x86_64__)
 #include "xmmintrin.h"
 
 // SSE Vec4
@@ -559,6 +561,7 @@ public:
     return _mm_xor_ps(is_true, vec128);
   };
 };
+#endif
 
 typedef Vec4<float> CMP_Vec4f;
 typedef Vec4<double> CMP_Vec4d;
